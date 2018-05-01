@@ -20,6 +20,10 @@ func Decode(msg proto.Data) interface{} {
 			return geojson.NewGeometry(makeLineString(geo.Coords, msg.Precision, msg.Dimensions))
 		case proto.Data_Geometry_MULTILINESTRING:
 			return geojson.NewGeometry(makeMultiLineString(geo.Lengths, geo.Coords, msg.Precision, msg.Dimensions))
+		case proto.Data_Geometry_POLYGON:
+			return geojson.NewGeometry(makePolygon(geo.Lengths, geo.Coords, msg.Precision, msg.Dimensions))
+		case proto.Data_Geometry_MULTIPOLYGON:
+			return geojson.NewGeometry(makeMultiPolygon(geo.Lengths, geo.Coords, msg.Precision, msg.Dimensions))
 		}
 		return geojson.Geometry{}
 	case *proto.Data_Feature_:
@@ -39,6 +43,35 @@ func makeMultiPoint(inCords []int64, precision uint32, dimension uint32) orb.Mul
 	return orb.MultiPoint(makeLine(inCords, precision, dimension, false))
 }
 
+func makeMultiPolygon(lengths []uint32, inCords []int64, precision uint32, dimension uint32) orb.MultiPolygon {
+	polyCount := int(lengths[0])
+	polygons := make([]orb.Polygon, polyCount)
+	lengths = lengths[1:]
+	for i := 0; i < polyCount; i += 1 {
+		ringCount := lengths[0]
+		polygons[i] = makePolygon(lengths[1:ringCount+1], inCords, precision, dimension)
+		skip := 0
+		for i := 0; i < int(ringCount); i += 1 {
+			skip += int(lengths[i]) * int(dimension)
+		}
+
+		lengths = lengths[ringCount:]
+		inCords = inCords[skip:]
+	}
+	return orb.MultiPolygon(polygons)
+}
+
+func makePolygon(lengths []uint32, inCords []int64, precision uint32, dimension uint32) orb.Polygon {
+	lines := make([]orb.Ring, len(lengths))
+	for i, length := range lengths {
+		l := int(length * dimension)
+		lines[i] = makeRing(inCords[:l], precision, dimension)
+		inCords = inCords[l:]
+	}
+	poly := orb.Polygon(lines)
+	return poly
+}
+
 func makeMultiLineString(lengths []uint32, inCords []int64, precision uint32, dimension uint32) orb.MultiLineString {
 	lines := make([]orb.LineString, len(lengths))
 	for i, length := range lengths {
@@ -47,6 +80,12 @@ func makeMultiLineString(lengths []uint32, inCords []int64, precision uint32, di
 		inCords = inCords[l:]
 	}
 	return orb.MultiLineString(lines)
+}
+
+func makeRing(inCords []int64, precision uint32, dimension uint32) orb.Ring {
+	points := makeLine(inCords, precision, dimension, true)
+	points = append(points, points[0])
+	return orb.Ring(points)
 }
 
 func makeLineString(inCords []int64, precision uint32, dimension uint32) orb.LineString {

@@ -72,7 +72,7 @@ func (b *protoBuilder) Build(obj interface{}) *proto.Data {
 			}
 		case "MultiLineString":
 			p := t.Coordinates.(orb.MultiLineString)
-			coords, lengths := translateMultiLine(b.precision, b.dimension, p, false)
+			coords, lengths := translateMultiLine(b.precision, b.dimension, p)
 			pbf.DataType = &proto.Data_Geometry_{
 				Geometry: &proto.Data_Geometry{
 					Type:    proto.Data_Geometry_MULTILINESTRING,
@@ -80,7 +80,29 @@ func (b *protoBuilder) Build(obj interface{}) *proto.Data {
 					Lengths: lengths,
 				},
 			}
+		case "Polygon":
+			p := []orb.Ring(t.Coordinates.(orb.Polygon))
+			coords, lengths := translateMultiRing(b.precision, b.dimension, p)
+			pbf.DataType = &proto.Data_Geometry_{
+				Geometry: &proto.Data_Geometry{
+					Type:    proto.Data_Geometry_POLYGON,
+					Coords:  coords,
+					Lengths: lengths,
+				},
+			}
+		case "MultiPolygon":
+			p := []orb.Polygon(t.Coordinates.(orb.MultiPolygon))
+			coords, lengths := translateMultiPolygon(b.precision, b.dimension, p)
+			pbf.DataType = &proto.Data_Geometry_{
+				Geometry: &proto.Data_Geometry{
+					Type:    proto.Data_Geometry_MULTIPOLYGON,
+					Coords:  coords,
+					Lengths: lengths,
+				},
+			}
+
 		}
+
 	}
 	return &pbf
 }
@@ -117,6 +139,22 @@ func (b *protoBuilder) Analyze(obj interface{}) {
 					b.updatePrecision(coord)
 				}
 			}
+		case "Polygon":
+			lines := t.Coordinates.(orb.Polygon)
+			for _, line := range lines {
+				for _, coord := range line {
+					b.updatePrecision(coord)
+				}
+			}
+		case "MultiPolygon":
+			polygons := t.Coordinates.(orb.MultiPolygon)
+			for _, rings := range polygons {
+				for _, ring := range rings {
+					for _, coord := range ring {
+						b.updatePrecision(coord)
+					}
+				}
+			}
 		}
 	// case geojson.GeometryCollection:
 	case geojson.Polygon:
@@ -143,12 +181,36 @@ func (b *protoBuilder) updatePrecision(point orb.Point) {
 	}
 }
 
-func translateMultiLine(e uint32, dim uint32, lines []orb.LineString, isClosed bool) ([]int64, []uint32) {
+func translateMultiLine(e uint32, dim uint32, lines []orb.LineString) ([]int64, []uint32) {
+	lengths := make([]uint32, len(lines))
+	coords := []int64{}
+
+	for i, line := range lines {
+		lengths[i] = uint32(len(line))
+		coords = append(coords, translateLine(e, dim, line, false)...)
+	}
+	return coords, lengths
+}
+
+func translateMultiPolygon(e uint32, dim uint32, polygons []orb.Polygon) ([]int64, []uint32) {
+	lengths := []uint32{uint32(len(polygons))}
+	coords := []int64{}
+	for _, rings := range polygons {
+		lengths = append(lengths, uint32(len(rings)))
+		newLine, newLength := translateMultiRing(e, dim, rings)
+		lengths = append(lengths, newLength...)
+		coords = append(coords, newLine...)
+	}
+	return coords, lengths
+}
+
+func translateMultiRing(e uint32, dim uint32, lines []orb.Ring) ([]int64, []uint32) {
 	lengths := make([]uint32, len(lines))
 	coords := []int64{}
 	for i, line := range lines {
-		lengths[i] = uint32(len(line))
-		coords = append(coords, translateLine(e, dim, line, isClosed)...)
+		lengths[i] = uint32(len(line) - 1)
+		newLine := translateLine(e, dim, line, true)
+		coords = append(coords, newLine...)
 	}
 	return coords, lengths
 }
@@ -164,7 +226,7 @@ func translateLine(e uint32, dim uint32, points []orb.Point, isClosed bool) []in
 		}
 	}
 	if isClosed {
-		return ret[:len(ret)-1]
+		return ret[:(len(ret) - int(dim))]
 	}
 	return ret
 }

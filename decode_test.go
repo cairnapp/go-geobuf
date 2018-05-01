@@ -64,3 +64,84 @@ func TestDecodeMultiLineString(t *testing.T) {
 		t.Errorf("Expected %+v, got %+v", p, decoded)
 	}
 }
+
+func TestDecodePolygon(t *testing.T) {
+	p := geojson.NewGeometry(orb.Polygon([]orb.Ring{
+		orb.Ring([]orb.Point{
+			orb.Point([2]float64{124.123, 234.456}),
+			orb.Point([2]float64{345.567, 456.678}),
+			orb.Point([2]float64{124.123, 234.456}),
+		}),
+		orb.Ring([]orb.Point{
+			orb.Point([2]float64{224.123, 334.456}),
+			orb.Point([2]float64{445.567, 556.678}),
+			orb.Point([2]float64{224.123, 334.456}),
+		}),
+	}))
+	encoded := Encode(p)
+	decoded := Decode(*encoded)
+
+	if !reflect.DeepEqual(p, decoded) {
+		t.Errorf("Expected %+v, got %+v", p, decoded)
+	}
+}
+
+func TestDecodeMultiPolygon(t *testing.T) {
+	p := geojson.NewGeometry(
+		orb.MultiPolygon([]orb.Polygon{
+			orb.Polygon([]orb.Ring{
+				orb.Ring([]orb.Point{
+					orb.Point([2]float64{124.123, 234.456}),
+					orb.Point([2]float64{345.567, 456.678}),
+					orb.Point([2]float64{124.123, 234.456}),
+				}),
+				orb.Ring([]orb.Point{
+					orb.Point([2]float64{224.123, 334.456}),
+					orb.Point([2]float64{445.567, 556.678}),
+					orb.Point([2]float64{224.123, 334.456}),
+				}),
+			}),
+			orb.Polygon([]orb.Ring{
+				orb.Ring([]orb.Point{
+					orb.Point([2]float64{124.123, 234.456}),
+					orb.Point([2]float64{345.567, 456.678}),
+					orb.Point([2]float64{124.123, 234.456}),
+				}),
+				orb.Ring([]orb.Point{
+					orb.Point([2]float64{224.123, 334.456}),
+					orb.Point([2]float64{445.567, 556.678}),
+					orb.Point([2]float64{224.123, 334.456}),
+				}),
+			}),
+		}))
+	encoded := Encode(p)
+	decoded := Decode(*encoded)
+
+	if !reflect.DeepEqual(p, decoded) {
+		t.Errorf("Expected %+v, got %+v", p, decoded)
+	}
+}
+
+func TestDecodeMultiPolygonEfficient(t *testing.T) {
+	p := geojson.NewGeometry(
+		orb.MultiPolygon([]orb.Polygon{
+			orb.Polygon([]orb.Ring{
+				orb.Ring([]orb.Point{
+					orb.Point([2]float64{124.123, 234.456}),
+					orb.Point([2]float64{345.567, 456.678}),
+					orb.Point([2]float64{124.123, 234.456}),
+				}),
+				orb.Ring([]orb.Point{
+					orb.Point([2]float64{224.123, 334.456}),
+					orb.Point([2]float64{445.567, 556.678}),
+					orb.Point([2]float64{224.123, 334.456}),
+				}),
+			}),
+		}))
+	encoded := Encode(p)
+	decoded := Decode(*encoded)
+
+	if !reflect.DeepEqual(p, decoded) {
+		t.Errorf("Expected %+v, got %+v", p, decoded)
+	}
+}
