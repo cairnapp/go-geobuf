@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  name = "github.com/davecgh/go-spew"
+  packages = ["spew"]
+  revision = "346938d642f2ec3594ed81d874461961cd0faa76"
+  version = "v1.1.0"
+
+[[projects]]
   name = "github.com/golang/protobuf"
   packages = ["proto"]
   revision = "925541529c1fa6821df4e44ce2723319eb2be768"
@@ -19,6 +25,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "114515575888a945c535b3428ea87fe077f4447079e5d9ee5a8b83043ff42a87"
+  inputs-digest = "c2c6ddbd1eda25b06cbbca9fa65fb76f664ed0899ba982ea1d1cde3e33060f61"
   solver-name = "gps-cdcl"
   solver-version = 1

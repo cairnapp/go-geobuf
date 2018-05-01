@@ -42,13 +42,6 @@ func (b *protoBuilder) Build(obj interface{}) *proto.Data {
 	}
 
 	switch t := obj.(type) {
-	case geojson.MultiPoint:
-		pbf.DataType = &proto.Data_Geometry_{
-			Geometry: &proto.Data_Geometry{
-				Type:   proto.Data_Geometry_MULTIPOINT,
-				Coords: translateLine(b.precision, b.dimension, t, false),
-			},
-		}
 	case *geojson.Geometry:
 		switch t.Type {
 		case "Point":
@@ -60,13 +53,33 @@ func (b *protoBuilder) Build(obj interface{}) *proto.Data {
 				},
 			}
 			return &pbf
-		}
-	case geojson.Point:
-		pbf.DataType = &proto.Data_Geometry_{
-			Geometry: &proto.Data_Geometry{
-				Type:   proto.Data_Geometry_POINT,
-				Coords: translateCoords(b.precision, t[:]),
-			},
+		case "MultiPoint":
+			p := t.Coordinates.(orb.MultiPoint)
+			pbf.DataType = &proto.Data_Geometry_{
+				Geometry: &proto.Data_Geometry{
+					Type:   proto.Data_Geometry_MULTIPOINT,
+					Coords: translateLine(b.precision, b.dimension, p, false),
+				},
+			}
+			return &pbf
+		case "LineString":
+			p := t.Coordinates.(orb.LineString)
+			pbf.DataType = &proto.Data_Geometry_{
+				Geometry: &proto.Data_Geometry{
+					Type:   proto.Data_Geometry_LINESTRING,
+					Coords: translateLine(b.precision, b.dimension, p, false),
+				},
+			}
+		case "MultiLineString":
+			p := t.Coordinates.(orb.MultiLineString)
+			coords, lengths := translateMultiLine(b.precision, b.dimension, p, false)
+			pbf.DataType = &proto.Data_Geometry_{
+				Geometry: &proto.Data_Geometry{
+					Type:    proto.Data_Geometry_MULTILINESTRING,
+					Coords:  coords,
+					Lengths: lengths,
+				},
+			}
 		}
 	}
 	return &pbf
@@ -87,18 +100,25 @@ func (b *protoBuilder) Analyze(obj interface{}) {
 		switch t.Type {
 		case "Point":
 			b.updatePrecision(t.Coordinates.(orb.Point))
-		}
-	case geojson.Point:
-		b.updatePrecision(orb.Point(t))
-	case geojson.MultiPoint:
-		for _, coord := range t {
-			b.updatePrecision(coord)
+		case "MultiPoint":
+			coords := t.Coordinates.(orb.MultiPoint)
+			for _, coord := range coords {
+				b.updatePrecision(coord)
+			}
+		case "LineString":
+			coords := t.Coordinates.(orb.LineString)
+			for _, coord := range coords {
+				b.updatePrecision(coord)
+			}
+		case "MultiLineString":
+			lines := t.Coordinates.(orb.MultiLineString)
+			for _, line := range lines {
+				for _, coord := range line {
+					b.updatePrecision(coord)
+				}
+			}
 		}
 	// case geojson.GeometryCollection:
-	case geojson.LineString:
-		for _, coord := range t {
-			b.updatePrecision(coord)
-		}
 	case geojson.Polygon:
 		for _, line := range t {
 			for _, coord := range line {
@@ -123,10 +143,19 @@ func (b *protoBuilder) updatePrecision(point orb.Point) {
 	}
 }
 
-func translateLine(e uint32, dim uint32, points geojson.MultiPoint, isClosed bool) []int64 {
+func translateMultiLine(e uint32, dim uint32, lines []orb.LineString, isClosed bool) ([]int64, []uint32) {
+	lengths := make([]uint32, len(lines))
+	coords := []int64{}
+	for i, line := range lines {
+		lengths[i] = uint32(len(line))
+		coords = append(coords, translateLine(e, dim, line, isClosed)...)
+	}
+	return coords, lengths
+}
+
+func translateLine(e uint32, dim uint32, points []orb.Point, isClosed bool) []int64 {
 	sums := make([]int64, dim)
-	ret := make([]int64, len([]orb.Point(points))*int(dim))
-	// TODO: Skip last one if isClosed
+	ret := make([]int64, len(points)*int(dim))
 	for i, point := range points {
 		for j, p := range point {
 			n := doTheMaths(e, p) - sums[j]
