@@ -8,8 +8,6 @@ import (
 	"github.com/paulmach/orb/geojson"
 )
 
-const MaxPrecision = 100000000
-
 func Encode(obj interface{}) *proto.Data {
 	builder := newBuilder()
 	builder.Analyze(obj)
@@ -175,9 +173,11 @@ func (b *protoBuilder) Analyze(obj interface{}) {
 }
 
 func (b *protoBuilder) updatePrecision(point orb.Point) {
-	e := getPrecision([2]float64(point))
-	if e > b.precision {
-		b.precision = e
+	for _, val := range point {
+		e := GetPrecision(val)
+		if e > b.precision {
+			b.precision = e
+		}
 	}
 }
 
@@ -220,7 +220,7 @@ func translateLine(e uint32, dim uint32, points []orb.Point, isClosed bool) []in
 	ret := make([]int64, len(points)*int(dim))
 	for i, point := range points {
 		for j, p := range point {
-			n := doTheMaths(e, p) - sums[j]
+			n := IntWithPrecision(p, e) - sums[j]
 			ret[(int(dim)*i)+j] = n
 			sums[j] = sums[j] + n
 		}
@@ -234,26 +234,7 @@ func translateLine(e uint32, dim uint32, points []orb.Point, isClosed bool) []in
 func translateCoords(e uint32, point []float64) []int64 {
 	ret := make([]int64, len(point))
 	for i, p := range point {
-		ret[i] = doTheMaths(e, p)
+		ret[i] = IntWithPrecision(p, e)
 	}
 	return ret
-}
-
-func doTheMaths(e uint32, p float64) int64 {
-	return int64(math.Round(p * float64(e)))
-}
-
-func getPrecision(point [2]float64) uint32 {
-	var e uint32 = 1
-	for _, val := range point {
-		for {
-			base := math.Round(float64(val * float64(e)))
-			if (base/float64(e)) != val && float64(e) < MaxPrecision {
-				e = e * 10
-			} else {
-				break
-			}
-		}
-	}
-	return e
 }

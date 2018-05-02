@@ -108,7 +108,7 @@ func makeCoords(inCords []int64, precision uint32) []float64 {
 	e := math.Pow10(int(precision))
 
 	for i, val := range inCords {
-		ret[i] = float64(val) / e
+		ret[i] = FloatWithPrecision(val, uint32(e))
 	}
 	return ret
 }
