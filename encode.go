@@ -40,69 +40,78 @@ func (b *protoBuilder) Build(obj interface{}) *proto.Data {
 	}
 
 	switch t := obj.(type) {
-	case *geojson.Geometry:
-		switch t.Type {
-		case "Point":
-			p := t.Coordinates.(orb.Point)
-			pbf.DataType = &proto.Data_Geometry_{
-				Geometry: &proto.Data_Geometry{
-					Type:   proto.Data_Geometry_POINT,
-					Coords: translateCoords(b.precision, p[:]),
-				},
-			}
-			return &pbf
-		case "MultiPoint":
-			p := t.Coordinates.(orb.MultiPoint)
-			pbf.DataType = &proto.Data_Geometry_{
-				Geometry: &proto.Data_Geometry{
-					Type:   proto.Data_Geometry_MULTIPOINT,
-					Coords: translateLine(b.precision, b.dimension, p, false),
-				},
-			}
-			return &pbf
-		case "LineString":
-			p := t.Coordinates.(orb.LineString)
-			pbf.DataType = &proto.Data_Geometry_{
-				Geometry: &proto.Data_Geometry{
-					Type:   proto.Data_Geometry_LINESTRING,
-					Coords: translateLine(b.precision, b.dimension, p, false),
-				},
-			}
-		case "MultiLineString":
-			p := t.Coordinates.(orb.MultiLineString)
-			coords, lengths := translateMultiLine(b.precision, b.dimension, p)
-			pbf.DataType = &proto.Data_Geometry_{
-				Geometry: &proto.Data_Geometry{
-					Type:    proto.Data_Geometry_MULTILINESTRING,
-					Coords:  coords,
-					Lengths: lengths,
-				},
-			}
-		case "Polygon":
-			p := []orb.Ring(t.Coordinates.(orb.Polygon))
-			coords, lengths := translateMultiRing(b.precision, b.dimension, p)
-			pbf.DataType = &proto.Data_Geometry_{
-				Geometry: &proto.Data_Geometry{
-					Type:    proto.Data_Geometry_POLYGON,
-					Coords:  coords,
-					Lengths: lengths,
-				},
-			}
-		case "MultiPolygon":
-			p := []orb.Polygon(t.Coordinates.(orb.MultiPolygon))
-			coords, lengths := translateMultiPolygon(b.precision, b.dimension, p)
-			pbf.DataType = &proto.Data_Geometry_{
-				Geometry: &proto.Data_Geometry{
-					Type:    proto.Data_Geometry_MULTIPOLYGON,
-					Coords:  coords,
-					Lengths: lengths,
-				},
-			}
-
+	case *geojson.Feature:
+		oldGeo := geojson.NewGeometry(t.Geometry)
+		geo := b.buildGeometry(oldGeo)
+		pbf.DataType = &proto.Data_Feature_{
+			Feature: &proto.Data_Feature{
+				Geometry: geo.Geometry,
+			},
 		}
-
+	case *geojson.Geometry:
+		pbf.DataType = b.buildGeometry(t)
 	}
 	return &pbf
+}
+
+func (b protoBuilder) buildGeometry(t *geojson.Geometry) *proto.Data_Geometry_ {
+	switch t.Type {
+	case "Point":
+		p := t.Coordinates.(orb.Point)
+		return &proto.Data_Geometry_{
+			Geometry: &proto.Data_Geometry{
+				Type:   proto.Data_Geometry_POINT,
+				Coords: translateCoords(b.precision, p[:]),
+			},
+		}
+	case "MultiPoint":
+		p := t.Coordinates.(orb.MultiPoint)
+		return &proto.Data_Geometry_{
+			Geometry: &proto.Data_Geometry{
+				Type:   proto.Data_Geometry_MULTIPOINT,
+				Coords: translateLine(b.precision, b.dimension, p, false),
+			},
+		}
+	case "LineString":
+		p := t.Coordinates.(orb.LineString)
+		return &proto.Data_Geometry_{
+			Geometry: &proto.Data_Geometry{
+				Type:   proto.Data_Geometry_LINESTRING,
+				Coords: translateLine(b.precision, b.dimension, p, false),
+			},
+		}
+	case "MultiLineString":
+		p := t.Coordinates.(orb.MultiLineString)
+		coords, lengths := translateMultiLine(b.precision, b.dimension, p)
+		return &proto.Data_Geometry_{
+			Geometry: &proto.Data_Geometry{
+				Type:    proto.Data_Geometry_MULTILINESTRING,
+				Coords:  coords,
+				Lengths: lengths,
+			},
+		}
+	case "Polygon":
+		p := []orb.Ring(t.Coordinates.(orb.Polygon))
+		coords, lengths := translateMultiRing(b.precision, b.dimension, p)
+		return &proto.Data_Geometry_{
+			Geometry: &proto.Data_Geometry{
+				Type:    proto.Data_Geometry_POLYGON,
+				Coords:  coords,
+				Lengths: lengths,
+			},
+		}
+	case "MultiPolygon":
+		p := []orb.Polygon(t.Coordinates.(orb.MultiPolygon))
+		coords, lengths := translateMultiPolygon(b.precision, b.dimension, p)
+		return &proto.Data_Geometry_{
+			Geometry: &proto.Data_Geometry{
+				Type:    proto.Data_Geometry_MULTIPOLYGON,
+				Coords:  coords,
+				Lengths: lengths,
+			},
+		}
+	}
+	return nil
 }
 
 func (b *protoBuilder) Analyze(obj interface{}) {
