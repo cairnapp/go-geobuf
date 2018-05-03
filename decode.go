@@ -1,10 +1,10 @@
 package geobuf
 
 import (
+	"github.com/cairnapp/go-geobuf/pkg/math"
 	"github.com/cairnapp/go-geobuf/proto"
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
-	"math"
 )
 
 func Decode(msg proto.Data) interface{} {
@@ -105,10 +105,10 @@ func makeLine(inCords []int64, precision uint32, dimension uint32, isClosed bool
 
 func makeCoords(inCords []int64, precision uint32) []float64 {
 	ret := make([]float64, len(inCords))
-	e := math.Pow10(int(precision))
+	e := math.DecodePrecision(precision)
 
 	for i, val := range inCords {
-		ret[i] = FloatWithPrecision(val, uint32(e))
+		ret[i] = math.FloatWithPrecision(val, uint32(e))
 	}
 	return ret
 }

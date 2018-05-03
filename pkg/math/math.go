@@ -1,4 +1,4 @@
-package geobuf
+package math
 
 import (
 	"math"
@@ -27,4 +27,12 @@ func IntWithPrecision(point float64, precision uint32) int64 {
 
 func FloatWithPrecision(point int64, precision uint32) float64 {
 	return float64(point) / float64(precision)
+}
+
+func EncodePrecision(precision float64) uint32 {
+	return uint32(math.Ceil(math.Log(precision) / math.Ln10))
+}
+
+func DecodePrecision(precision uint32) float64 {
+	return math.Pow10(int(precision))
 }

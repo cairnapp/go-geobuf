@@ -1,11 +1,11 @@
 package geobuf
 
 import (
-	"math"
-
+	"github.com/cairnapp/go-geobuf/pkg/math"
 	"github.com/cairnapp/go-geobuf/proto"
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
+	"sort"
 )
 
 func Encode(obj interface{}) *proto.Data {
@@ -15,43 +15,92 @@ func Encode(obj interface{}) *proto.Data {
 }
 
 type protoBuilder struct {
-	keys      []string
+	keys      map[string]bool
 	precision uint32
 	dimension uint32
+	data      *proto.Data
 }
 
 func newBuilder() *protoBuilder {
 	pb := &protoBuilder{
-		keys:      []string{},
+		keys:      map[string]bool{},
 		precision: 1,
 		// Since Orb forces us into a 2 dimensional point, we'll have to use other ways to encode elevation + time
 		// int(math.Max(float64(b.dimension), float64(len(point))))
 		dimension: 2,
+		data:      nil,
 	}
 	return pb
 }
 
 func (b *protoBuilder) Build(obj interface{}) *proto.Data {
-	precision := math.Ceil(math.Log(float64(b.precision)) / math.Ln10)
-	pbf := proto.Data{
-		Keys:       b.keys,
+	precision := math.EncodePrecision(float64(b.precision))
+	keys := make([]string, 0, len(b.keys))
+	for key, _ := range b.keys {
+		keys = append(keys, key)
+	}
+
+	sort.Strings(keys)
+	b.data = &proto.Data{
+		Keys:       keys,
 		Dimensions: b.dimension,
-		Precision:  uint32(precision),
+		Precision:  precision,
 	}
 
 	switch t := obj.(type) {
 	case *geojson.Feature:
-		oldGeo := geojson.NewGeometry(t.Geometry)
-		geo := b.buildGeometry(oldGeo)
-		pbf.DataType = &proto.Data_Feature_{
-			Feature: &proto.Data_Feature{
-				Geometry: geo.Geometry,
-			},
-		}
+		b.data.DataType = b.encodeFeature(t)
 	case *geojson.Geometry:
-		pbf.DataType = b.buildGeometry(t)
+		b.data.DataType = b.buildGeometry(t)
 	}
-	return &pbf
+	return b.data
+}
+
+func (b protoBuilder) encodeFeature(feature *geojson.Feature) *proto.Data_Feature_ {
+	oldGeo := geojson.NewGeometry(feature.Geometry)
+	geo := b.buildGeometry(oldGeo)
+	f := &proto.Data_Feature_{
+		Feature: &proto.Data_Feature{
+			Geometry: geo.Geometry,
+		},
+	}
+
+	switch t := feature.ID.(type) {
+	case *string:
+		f.Feature.IdType = b.encodeId(*t)
+	case string:
+		f.Feature.IdType = b.encodeId(t)
+	case int:
+		f.Feature.IdType = b.encodeIntId(int64(t))
+	case int32:
+		f.Feature.IdType = b.encodeIntId(int64(t))
+	case int64:
+		f.Feature.IdType = b.encodeIntId(t)
+	}
+
+	for key, _ := range feature.Properties {
+		idx := indexOf(b.data.Keys, key)
+		f.Feature.Values = append(f.Feature.Values, &proto.Data_Value{ValueType: &proto.Data_Value_StringValue{StringValue: "TODO"}})
+		f.Feature.Properties = append(f.Feature.Properties, idx)
+		f.Feature.Properties = append(f.Feature.Properties, uint32(len(f.Feature.Values)))
+	}
+	return f
+}
+
+func indexOf(values []string, key string) uint32 {
+	return uint32(sort.SearchStrings(values, key))
+}
+
+func (b protoBuilder) encodeIntId(id int64) *proto.Data_Feature_IntId {
+	return &proto.Data_Feature_IntId{
+		IntId: id,
+	}
+}
+
+func (b protoBuilder) encodeId(id string) *proto.Data_Feature_Id {
+	return &proto.Data_Feature_Id{
+		Id: id,
+	}
 }
 
 func (b protoBuilder) buildGeometry(t *geojson.Geometry) *proto.Data_Geometry_ {
@@ -120,10 +169,13 @@ func (b *protoBuilder) Analyze(obj interface{}) {
 		for _, feature := range t.Features {
 			b.Analyze(feature)
 		}
-	case geojson.Feature:
+	case *geojson.Feature:
 		b.Analyze(t.Geometry)
 		for key, _ := range t.Properties {
-			b.keys = append(b.keys, key)
+			_, ok := b.keys[key]
+			if !ok {
+				b.keys[key] = true
+			}
 		}
 	case *geojson.Geometry:
 		switch t.Type {
@@ -183,7 +235,7 @@ func (b *protoBuilder) Analyze(obj interface{}) {
 
 func (b *protoBuilder) updatePrecision(point orb.Point) {
 	for _, val := range point {
-		e := GetPrecision(val)
+		e := math.GetPrecision(val)
 		if e > b.precision {
 			b.precision = e
 		}
@@ -229,7 +281,7 @@ func translateLine(e uint32, dim uint32, points []orb.Point, isClosed bool) []in
 	ret := make([]int64, len(points)*int(dim))
 	for i, point := range points {
 		for j, p := range point {
-			n := IntWithPrecision(p, e) - sums[j]
+			n := math.IntWithPrecision(p, e) - sums[j]
 			ret[(int(dim)*i)+j] = n
 			sums[j] = sums[j] + n
 		}
@@ -243,7 +295,7 @@ func translateLine(e uint32, dim uint32, points []orb.Point, isClosed bool) []in
 func translateCoords(e uint32, point []float64) []int64 {
 	ret := make([]int64, len(point))
 	for i, p := range point {
-		ret[i] = IntWithPrecision(p, e)
+		ret[i] = math.IntWithPrecision(p, e)
 	}
 	return ret
 }
