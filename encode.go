@@ -1,17 +1,24 @@
 package geobuf
 
 import (
+	"sort"
+
+	"github.com/cairnapp/go-geobuf/pkg/encode"
 	"github.com/cairnapp/go-geobuf/pkg/math"
 	"github.com/cairnapp/go-geobuf/proto"
+
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
-	"sort"
 )
 
 func Encode(obj interface{}) *proto.Data {
 	builder := newBuilder()
 	builder.Analyze(obj)
-	return builder.Build(obj)
+	b, err := builder.Build(obj)
+	if err != nil {
+		panic(err)
+	}
+	return b
 }
 
 type protoBuilder struct {
@@ -33,7 +40,7 @@ func newBuilder() *protoBuilder {
 	return pb
 }
 
-func (b *protoBuilder) Build(obj interface{}) *proto.Data {
+func (b *protoBuilder) Build(obj interface{}) (*proto.Data, error) {
 	precision := math.EncodePrecision(float64(b.precision))
 	keys := make([]string, 0, len(b.keys))
 	for key, _ := range b.keys {
@@ -49,14 +56,18 @@ func (b *protoBuilder) Build(obj interface{}) *proto.Data {
 
 	switch t := obj.(type) {
 	case *geojson.Feature:
-		b.data.DataType = b.encodeFeature(t)
+		data, err := b.encodeFeature(t)
+		if err != nil {
+			return b.data, err
+		}
+		b.data.DataType = data
 	case *geojson.Geometry:
 		b.data.DataType = b.buildGeometry(t)
 	}
-	return b.data
+	return b.data, nil
 }
 
-func (b protoBuilder) encodeFeature(feature *geojson.Feature) *proto.Data_Feature_ {
+func (b protoBuilder) encodeFeature(feature *geojson.Feature) (*proto.Data_Feature_, error) {
 	oldGeo := geojson.NewGeometry(feature.Geometry)
 	geo := b.buildGeometry(oldGeo)
 	f := &proto.Data_Feature_{
@@ -78,13 +89,17 @@ func (b protoBuilder) encodeFeature(feature *geojson.Feature) *proto.Data_Featur
 		f.Feature.IdType = b.encodeIntId(t)
 	}
 
-	for key, _ := range feature.Properties {
+	for key, val := range feature.Properties {
+		encoded, err := encode.EncodeValue(val)
+		if err != nil {
+			return f, err
+		}
 		idx := indexOf(b.data.Keys, key)
-		f.Feature.Values = append(f.Feature.Values, &proto.Data_Value{ValueType: &proto.Data_Value_StringValue{StringValue: "TODO"}})
+		f.Feature.Values = append(f.Feature.Values, encoded)
 		f.Feature.Properties = append(f.Feature.Properties, idx)
 		f.Feature.Properties = append(f.Feature.Properties, uint32(len(f.Feature.Values)))
 	}
-	return f
+	return f, nil
 }
 
 func indexOf(values []string, key string) uint32 {
