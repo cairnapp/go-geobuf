@@ -76,17 +76,15 @@ func (b protoBuilder) encodeFeature(feature *geojson.Feature) (*proto.Data_Featu
 		},
 	}
 
-	switch t := feature.ID.(type) {
-	case *string:
-		f.Feature.IdType = b.encodeId(*t)
-	case string:
-		f.Feature.IdType = b.encodeId(t)
-	case int:
-		f.Feature.IdType = b.encodeIntId(int64(t))
-	case int32:
-		f.Feature.IdType = b.encodeIntId(int64(t))
-	case int64:
-		f.Feature.IdType = b.encodeIntId(t)
+	id, err := encode.EncodeIntId(feature.ID)
+	if err == nil {
+		f.Feature.IdType = id
+	} else {
+		newId, newErr := encode.EncodeId(feature.ID)
+		if newErr != nil {
+			return nil, newErr
+		}
+		f.Feature.IdType = newId
 	}
 
 	for key, val := range feature.Properties {
@@ -97,25 +95,13 @@ func (b protoBuilder) encodeFeature(feature *geojson.Feature) (*proto.Data_Featu
 		idx := indexOf(b.data.Keys, key)
 		f.Feature.Values = append(f.Feature.Values, encoded)
 		f.Feature.Properties = append(f.Feature.Properties, idx)
-		f.Feature.Properties = append(f.Feature.Properties, uint32(len(f.Feature.Values)))
+		f.Feature.Properties = append(f.Feature.Properties, uint32(len(f.Feature.Values))-1)
 	}
 	return f, nil
 }
 
 func indexOf(values []string, key string) uint32 {
 	return uint32(sort.SearchStrings(values, key))
-}
-
-func (b protoBuilder) encodeIntId(id int64) *proto.Data_Feature_IntId {
-	return &proto.Data_Feature_IntId{
-		IntId: id,
-	}
-}
-
-func (b protoBuilder) encodeId(id string) *proto.Data_Feature_Id {
-	return &proto.Data_Feature_Id{
-		Id: id,
-	}
 }
 
 func (b protoBuilder) buildGeometry(t *geojson.Geometry) *proto.Data_Geometry_ {
@@ -185,7 +171,7 @@ func (b *protoBuilder) Analyze(obj interface{}) {
 			b.Analyze(feature)
 		}
 	case *geojson.Feature:
-		b.Analyze(t.Geometry)
+		b.Analyze(geojson.NewGeometry(t.Geometry))
 		for key, _ := range t.Properties {
 			_, ok := b.keys[key]
 			if !ok {
