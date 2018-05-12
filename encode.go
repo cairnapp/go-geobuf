@@ -55,6 +55,12 @@ func (b *protoBuilder) Build(obj interface{}) (*proto.Data, error) {
 	}
 
 	switch t := obj.(type) {
+	case *geojson.FeatureCollection:
+		data, err := b.encodeFeatureCollection(t)
+		if err != nil {
+			return b.data, err
+		}
+		b.data.DataType = data
 	case *geojson.Feature:
 		data, err := b.encodeFeature(t)
 		if err != nil {
@@ -65,6 +71,25 @@ func (b *protoBuilder) Build(obj interface{}) (*proto.Data, error) {
 		b.data.DataType = b.buildGeometry(t)
 	}
 	return b.data, nil
+}
+
+func (b protoBuilder) encodeFeatureCollection(collection *geojson.FeatureCollection) (*proto.Data_FeatureCollection_, error) {
+	features := make([]*proto.Data_Feature, len(collection.Features))
+
+	for i, feature := range collection.Features {
+		encoded, err := b.encodeFeature(feature)
+		if err != nil {
+			return nil, err
+		}
+		features[i] = encoded.Feature
+	}
+
+	f := &proto.Data_FeatureCollection_{
+		FeatureCollection: &proto.Data_FeatureCollection{
+			Features: features,
+		},
+	}
+	return f, nil
 }
 
 func (b protoBuilder) encodeFeature(feature *geojson.Feature) (*proto.Data_Feature_, error) {
@@ -166,7 +191,7 @@ func (b protoBuilder) buildGeometry(t *geojson.Geometry) *proto.Data_Geometry_ {
 
 func (b *protoBuilder) Analyze(obj interface{}) {
 	switch t := obj.(type) {
-	case geojson.FeatureCollection:
+	case *geojson.FeatureCollection:
 		for _, feature := range t.Features {
 			b.Analyze(feature)
 		}
