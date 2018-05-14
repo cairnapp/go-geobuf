@@ -5,11 +5,11 @@ import (
 )
 
 var (
-	MaxPrecision = uint32(math.Pow10(9))
+	MaxPrecision = uint(math.Pow10(9))
 )
 
-func GetPrecision(point float64) uint32 {
-	var e uint32 = 1
+func GetPrecision(point float64) uint {
+	var e uint = 1
 	for {
 		base := math.Round(float64(point * float64(e)))
 		if (base/float64(e)) != point && e < MaxPrecision {
@@ -21,7 +21,7 @@ func GetPrecision(point float64) uint32 {
 	return e
 }
 
-func IntWithPrecision(point float64, precision uint32) int64 {
+func IntWithPrecision(point float64, precision uint) int64 {
 	return int64(math.Round(point * float64(precision)))
 }
 
@@ -29,8 +29,8 @@ func FloatWithPrecision(point int64, precision uint32) float64 {
 	return float64(point) / float64(precision)
 }
 
-func EncodePrecision(precision float64) uint32 {
-	return uint32(math.Ceil(math.Log(precision) / math.Ln10))
+func EncodePrecision(precision uint) uint32 {
+	return uint32(math.Ceil(math.Log(float64(precision)) / math.Ln10))
 }
 
 func DecodePrecision(precision uint32) float64 {

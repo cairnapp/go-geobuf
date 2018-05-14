@@ -167,7 +167,7 @@ func TestDecodeFeatureIntId(t *testing.T) {
 	p.Properties["string"] = "string"
 	p.Properties["bool"] = true
 	encoded := Encode(p)
-
+	spew.Dump(encoded)
 	decoded := Decode(*encoded)
 
 	if !reflect.DeepEqual(p, decoded) {
@@ -195,6 +195,7 @@ func TestDecodeFeatureStringId(t *testing.T) {
 	p.Properties["string"] = "string"
 	p.Properties["bool"] = true
 	encoded := Encode(p)
+	spew.Dump(encoded)
 
 	decoded := Decode(*encoded)
 
@@ -248,7 +249,6 @@ func TestDecodeFeatureCollection(t *testing.T) {
 	encoded := Encode(collection)
 
 	decoded := Decode(*encoded)
-	spew.Dump(decoded)
 
 	if !reflect.DeepEqual(collection, decoded) {
 		t.Errorf("Expected %+v, got %+v", p, decoded)
