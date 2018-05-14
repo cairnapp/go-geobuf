@@ -7,7 +7,7 @@ import (
 	"github.com/cairnapp/go-geobuf/proto"
 )
 
-func Decode(msg proto.Data) interface{} {
+func Decode(msg *proto.Data) interface{} {
 	switch v := msg.DataType.(type) {
 	case *proto.Data_Geometry_:
 		geo := v.Geometry

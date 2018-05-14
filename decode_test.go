@@ -14,7 +14,7 @@ import (
 func TestDecodePoint(t *testing.T) {
 	p := geojson.NewGeometry(orb.Point([2]float64{124.123, 234.456}))
 	encoded := Encode(p)
-	decoded := Decode(*encoded)
+	decoded := Decode(encoded)
 
 	if !reflect.DeepEqual(p, decoded) {
 		t.Errorf("Expected %+v, got %+v", p, decoded)
@@ -27,7 +27,7 @@ func TestDecodeMultiPoint(t *testing.T) {
 		orb.Point([2]float64{345.567, 456.678}),
 	}))
 	encoded := Encode(p)
-	decoded := Decode(*encoded)
+	decoded := Decode(encoded)
 
 	if !reflect.DeepEqual(p, decoded) {
 		t.Errorf("Expected %+v, got %+v", p, decoded)
@@ -40,7 +40,7 @@ func TestDecodeLineString(t *testing.T) {
 		orb.Point([2]float64{345.567, 456.678}),
 	}))
 	encoded := Encode(p)
-	decoded := Decode(*encoded)
+	decoded := Decode(encoded)
 
 	if !reflect.DeepEqual(p, decoded) {
 		t.Errorf("Expected %+v, got %+v", p, decoded)
@@ -59,7 +59,7 @@ func TestDecodeMultiLineString(t *testing.T) {
 		}),
 	}))
 	encoded := Encode(p)
-	decoded := Decode(*encoded)
+	decoded := Decode(encoded)
 
 	if !reflect.DeepEqual(p, decoded) {
 		t.Errorf("Expected %+v, got %+v", p, decoded)
@@ -80,7 +80,7 @@ func TestDecodePolygon(t *testing.T) {
 		}),
 	}))
 	encoded := Encode(p)
-	decoded := Decode(*encoded)
+	decoded := Decode(encoded)
 
 	if !reflect.DeepEqual(p, decoded) {
 		t.Errorf("Expected %+v, got %+v", p, decoded)
@@ -116,7 +116,7 @@ func TestDecodeMultiPolygon(t *testing.T) {
 			}),
 		}))
 	encoded := Encode(p)
-	decoded := Decode(*encoded)
+	decoded := Decode(encoded)
 
 	if !reflect.DeepEqual(p, decoded) {
 		t.Errorf("Expected %+v, got %+v", p, decoded)
@@ -140,7 +140,7 @@ func TestDecodeMultiPolygonEfficient(t *testing.T) {
 			}),
 		}))
 	encoded := Encode(p)
-	decoded := Decode(*encoded)
+	decoded := Decode(encoded)
 
 	if !reflect.DeepEqual(p, decoded) {
 		t.Errorf("Expected %+v, got %+v", p, decoded)
@@ -168,7 +168,7 @@ func TestDecodeFeatureIntId(t *testing.T) {
 	p.Properties["bool"] = true
 	encoded := Encode(p)
 	spew.Dump(encoded)
-	decoded := Decode(*encoded)
+	decoded := Decode(encoded)
 
 	if !reflect.DeepEqual(p, decoded) {
 		t.Errorf("Expected %+v, got %+v", p, decoded)
@@ -197,7 +197,7 @@ func TestDecodeFeatureStringId(t *testing.T) {
 	encoded := Encode(p)
 	spew.Dump(encoded)
 
-	decoded := Decode(*encoded)
+	decoded := Decode(encoded)
 
 	if !reflect.DeepEqual(p, decoded) {
 		t.Errorf("Expected %+v, got %+v", p, decoded)
@@ -248,7 +248,7 @@ func TestDecodeFeatureCollection(t *testing.T) {
 	collection.Append(p2)
 	encoded := Encode(collection)
 
-	decoded := Decode(*encoded)
+	decoded := Decode(encoded)
 
 	if !reflect.DeepEqual(collection, decoded) {
 		t.Errorf("Expected %+v, got %+v", p, decoded)

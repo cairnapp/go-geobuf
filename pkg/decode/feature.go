@@ -5,7 +5,7 @@ import (
 	"github.com/paulmach/orb/geojson"
 )
 
-func DecodeFeature(msg proto.Data, feature *proto.Data_Feature, precision, dimension uint32) *geojson.Feature {
+func DecodeFeature(msg *proto.Data, feature *proto.Data_Feature, precision, dimension uint32) *geojson.Feature {
 	geo := feature.Geometry
 	decodedGeo := DecodeGeometry(geo, msg.Precision, msg.Dimensions)
 	geoFeature := geojson.NewFeature(decodedGeo.Geometry())
