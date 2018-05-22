@@ -13,18 +13,9 @@
   revision = "925541529c1fa6821df4e44ce2723319eb2be768"
   version = "v1.0.0"
 
-[[projects]]
-  branch = "master"
-  name = "github.com/paulmach/orb"
-  packages = [
-    ".",
-    "geojson"
-  ]
-  revision = "315e2ac4d3bb4da3778d409e7d30864ef0ceef9f"
-
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c2c6ddbd1eda25b06cbbca9fa65fb76f664ed0899ba982ea1d1cde3e33060f61"
+  inputs-digest = "e3b81f3cd43664cb3778746238353c0bda7edbab8683322fa112fa74bab5d703"
   solver-name = "gps-cdcl"
   solver-version = 1

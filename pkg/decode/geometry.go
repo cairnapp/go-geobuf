@@ -1,10 +1,10 @@
 package decode
 
 import (
+	"github.com/cairnapp/go-geobuf/pkg/geojson"
+	"github.com/cairnapp/go-geobuf/pkg/geometry"
 	"github.com/cairnapp/go-geobuf/pkg/math"
 	"github.com/cairnapp/go-geobuf/proto"
-	"github.com/paulmach/orb"
-	"github.com/paulmach/orb/geojson"
 )
 
 func DecodeGeometry(geo *proto.Data_Geometry, precision, dimensions uint32) *geojson.Geometry {
@@ -25,20 +25,17 @@ func DecodeGeometry(geo *proto.Data_Geometry, precision, dimensions uint32) *geo
 	return &geojson.Geometry{}
 }
 
-func makePoint(inCords []int64, precision uint32) orb.Point {
-	point := [2]float64{}
-	converted := makeCoords(inCords, precision)
-	copy(point[:], converted[:])
-	return orb.Point(point)
+func makePoint(inCords []int64, precision uint32) geometry.Point {
+	return geometry.Point(makeCoords(inCords, precision))
 }
 
-func makeMultiPoint(inCords []int64, precision uint32, dimension uint32) orb.MultiPoint {
-	return orb.MultiPoint(makeLine(inCords, precision, dimension, false))
+func makeMultiPoint(inCords []int64, precision uint32, dimension uint32) geometry.MultiPoint {
+	return geometry.MultiPoint(makeLine(inCords, precision, dimension, false))
 }
 
-func makeMultiPolygon(lengths []uint32, inCords []int64, precision uint32, dimension uint32) orb.MultiPolygon {
+func makeMultiPolygon(lengths []uint32, inCords []int64, precision uint32, dimension uint32) geometry.MultiPolygon {
 	polyCount := int(lengths[0])
-	polygons := make([]orb.Polygon, polyCount)
+	polygons := make([]geometry.Polygon, polyCount)
 	lengths = lengths[1:]
 	for i := 0; i < polyCount; i += 1 {
 		ringCount := lengths[0]
@@ -51,42 +48,42 @@ func makeMultiPolygon(lengths []uint32, inCords []int64, precision uint32, dimen
 		lengths = lengths[ringCount:]
 		inCords = inCords[skip:]
 	}
-	return orb.MultiPolygon(polygons)
+	return geometry.MultiPolygon(polygons)
 }
 
-func makePolygon(lengths []uint32, inCords []int64, precision uint32, dimension uint32) orb.Polygon {
-	lines := make([]orb.Ring, len(lengths))
+func makePolygon(lengths []uint32, inCords []int64, precision uint32, dimension uint32) geometry.Polygon {
+	lines := make([]geometry.Ring, len(lengths))
 	for i, length := range lengths {
 		l := int(length * dimension)
 		lines[i] = makeRing(inCords[:l], precision, dimension)
 		inCords = inCords[l:]
 	}
-	poly := orb.Polygon(lines)
+	poly := geometry.Polygon(lines)
 	return poly
 }
 
-func makeMultiLineString(lengths []uint32, inCords []int64, precision uint32, dimension uint32) orb.MultiLineString {
-	lines := make([]orb.LineString, len(lengths))
+func makeMultiLineString(lengths []uint32, inCords []int64, precision uint32, dimension uint32) geometry.MultiLineString {
+	lines := make([]geometry.LineString, len(lengths))
 	for i, length := range lengths {
 		l := int(length * dimension)
 		lines[i] = makeLineString(inCords[:l], precision, dimension)
 		inCords = inCords[l:]
 	}
-	return orb.MultiLineString(lines)
+	return geometry.MultiLineString(lines)
 }
 
-func makeRing(inCords []int64, precision uint32, dimension uint32) orb.Ring {
+func makeRing(inCords []int64, precision uint32, dimension uint32) geometry.Ring {
 	points := makeLine(inCords, precision, dimension, true)
 	points = append(points, points[0])
-	return orb.Ring(points)
+	return geometry.Ring(points)
 }
 
-func makeLineString(inCords []int64, precision uint32, dimension uint32) orb.LineString {
-	return orb.LineString(makeLine(inCords, precision, dimension, false))
+func makeLineString(inCords []int64, precision uint32, dimension uint32) geometry.LineString {
+	return geometry.LineString(makeLine(inCords, precision, dimension, false))
 }
 
-func makeLine(inCords []int64, precision uint32, dimension uint32, isClosed bool) []orb.Point {
-	points := make([]orb.Point, len(inCords)/int(dimension))
+func makeLine(inCords []int64, precision uint32, dimension uint32, isClosed bool) []geometry.Point {
+	points := make([]geometry.Point, len(inCords)/int(dimension))
 	prevCords := [2]int64{}
 	for i, j := 0, 1; j < len(inCords); i, j = i+2, j+2 {
 		prevCords[0] += inCords[i]

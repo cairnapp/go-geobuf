@@ -1,10 +1,10 @@
 package encode
 
 import (
+	"github.com/cairnapp/go-geobuf/pkg/geojson"
+	"github.com/cairnapp/go-geobuf/pkg/geometry"
 	"github.com/cairnapp/go-geobuf/pkg/math"
 	"github.com/cairnapp/go-geobuf/proto"
-	"github.com/paulmach/orb"
-	"github.com/paulmach/orb/geojson"
 )
 
 const (
@@ -16,44 +16,44 @@ const (
 	GeometryMultiPolygon    = "MultiPolygon"
 )
 
-func EncodeGeometry(geometry *geojson.Geometry, opt *EncodingConfig) *proto.Data_Geometry {
-	switch geometry.Type {
-	case GeometryPoint:
-		p := geometry.Coordinates.(orb.Point)
+func EncodeGeometry(g *geojson.Geometry, opt *EncodingConfig) *proto.Data_Geometry {
+	switch g.Type {
+	case geojson.GeometryPointType:
+		p := g.Coordinates.(geometry.Point)
 		return &proto.Data_Geometry{
 			Type:   proto.Data_Geometry_POINT,
 			Coords: translateCoords(opt.Precision, p[:]),
 		}
-	case GeometryMultiPoint:
-		p := geometry.Coordinates.(orb.MultiPoint)
+	case geojson.GeometryMultiPointType:
+		p := g.Coordinates.(geometry.MultiPoint)
 		return &proto.Data_Geometry{
 			Type:   proto.Data_Geometry_MULTIPOINT,
 			Coords: translateLine(opt.Precision, opt.Dimension, p, false),
 		}
-	case GeometryLineString:
-		p := geometry.Coordinates.(orb.LineString)
+	case geojson.GeometryLineStringType:
+		p := g.Coordinates.(geometry.LineString)
 		return &proto.Data_Geometry{
 			Type:   proto.Data_Geometry_LINESTRING,
 			Coords: translateLine(opt.Precision, opt.Dimension, p, false),
 		}
-	case GeometryMultiLineString:
-		p := geometry.Coordinates.(orb.MultiLineString)
+	case geojson.GeometryMultiLineStringType:
+		p := g.Coordinates.(geometry.MultiLineString)
 		coords, lengths := translateMultiLine(opt.Precision, opt.Dimension, p)
 		return &proto.Data_Geometry{
 			Type:    proto.Data_Geometry_MULTILINESTRING,
 			Coords:  coords,
 			Lengths: lengths,
 		}
-	case GeometryPolygon:
-		p := []orb.Ring(geometry.Coordinates.(orb.Polygon))
+	case geojson.GeometryPolygonType:
+		p := []geometry.Ring(g.Coordinates.(geometry.Polygon))
 		coords, lengths := translateMultiRing(opt.Precision, opt.Dimension, p)
 		return &proto.Data_Geometry{
 			Type:    proto.Data_Geometry_POLYGON,
 			Coords:  coords,
 			Lengths: lengths,
 		}
-	case GeometryMultiPolygon:
-		p := []orb.Polygon(geometry.Coordinates.(orb.MultiPolygon))
+	case geojson.GeometryMultiPolygonType:
+		p := []geometry.Polygon(g.Coordinates.(geometry.MultiPolygon))
 		coords, lengths := translateMultiPolygon(opt.Precision, opt.Dimension, p)
 		return &proto.Data_Geometry{
 			Type:    proto.Data_Geometry_MULTIPOLYGON,
@@ -64,7 +64,7 @@ func EncodeGeometry(geometry *geojson.Geometry, opt *EncodingConfig) *proto.Data
 	return nil
 }
 
-func translateMultiLine(e uint, dim uint, lines []orb.LineString) ([]int64, []uint32) {
+func translateMultiLine(e uint, dim uint, lines []geometry.LineString) ([]int64, []uint32) {
 	lengths := make([]uint32, len(lines))
 	coords := []int64{}
 
@@ -75,7 +75,7 @@ func translateMultiLine(e uint, dim uint, lines []orb.LineString) ([]int64, []ui
 	return coords, lengths
 }
 
-func translateMultiPolygon(e uint, dim uint, polygons []orb.Polygon) ([]int64, []uint32) {
+func translateMultiPolygon(e uint, dim uint, polygons []geometry.Polygon) ([]int64, []uint32) {
 	lengths := []uint32{uint32(len(polygons))}
 	coords := []int64{}
 	for _, rings := range polygons {
@@ -87,7 +87,7 @@ func translateMultiPolygon(e uint, dim uint, polygons []orb.Polygon) ([]int64, [
 	return coords, lengths
 }
 
-func translateMultiRing(e uint, dim uint, lines []orb.Ring) ([]int64, []uint32) {
+func translateMultiRing(e uint, dim uint, lines []geometry.Ring) ([]int64, []uint32) {
 	lengths := make([]uint32, len(lines))
 	coords := []int64{}
 	for i, line := range lines {
@@ -114,7 +114,7 @@ such as with a polygon, we can skip the last point, and place it back when we de
 
 1. https://developers.google.com/protocol-buffers/docs/encoding#varints
 */
-func translateLine(precision uint, dim uint, points []orb.Point, isClosed bool) []int64 {
+func translateLine(precision uint, dim uint, points []geometry.Point, isClosed bool) []int64 {
 	sums := make([]int64, dim)
 	ret := make([]int64, len(points)*int(dim))
 	for i, point := range points {

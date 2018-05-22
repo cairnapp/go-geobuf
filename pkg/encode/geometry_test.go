@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	. "github.com/cairnapp/go-geobuf/pkg/encode"
+	"github.com/cairnapp/go-geobuf/pkg/geojson"
+	"github.com/cairnapp/go-geobuf/pkg/geometry"
 	"github.com/cairnapp/go-geobuf/proto"
-	"github.com/paulmach/orb"
-	"github.com/paulmach/orb/geojson"
 )
 
 func TestEncodePoint(t *testing.T) {
@@ -35,7 +35,7 @@ func TestEncodePoint(t *testing.T) {
 		},
 	}
 
-	p := geojson.NewGeometry(orb.Point([2]float64{124.123, 234.456}))
+	p := geojson.NewGeometry(geometry.Point([]float64{124.123, 234.456}))
 	for i, test := range testCases {
 		expected := &proto.Data_Geometry{
 			Type:   proto.Data_Geometry_POINT,

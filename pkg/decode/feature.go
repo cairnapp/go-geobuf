@@ -1,14 +1,26 @@
 package decode
 
 import (
+	"github.com/cairnapp/go-geobuf/pkg/geojson"
+	"github.com/cairnapp/go-geobuf/pkg/geometry"
 	"github.com/cairnapp/go-geobuf/proto"
-	"github.com/paulmach/orb/geojson"
 )
 
 func DecodeFeature(msg *proto.Data, feature *proto.Data_Feature, precision, dimension uint32) *geojson.Feature {
 	geo := feature.Geometry
 	decodedGeo := DecodeGeometry(geo, msg.Precision, msg.Dimensions)
-	geoFeature := geojson.NewFeature(decodedGeo.Geometry())
+	var geoFeature *geojson.Feature
+	switch decodedGeo.Type {
+	case geojson.GeometryCollectionType:
+		collection := make(geometry.Collection, len(decodedGeo.Geometries))
+		for i, child := range decodedGeo.Geometries {
+			collection[i] = child.Coordinates
+		}
+		geoFeature = geojson.NewFeature(collection)
+	default:
+		geoFeature = geojson.NewFeature(decodedGeo.Coordinates)
+	}
+
 	for i := 0; i < len(feature.Properties); i = i + 2 {
 		keyIdx := feature.Properties[i]
 		valIdx := feature.Properties[i+1]
